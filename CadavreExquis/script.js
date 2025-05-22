@@ -3,6 +3,22 @@ const ctx = canvas.getContext("2d");
 let drawing = false;
 let paths = [];
 let currentPath = [];
+let clientId = null;
+let clientCount = 0;
+
+const webRoomsWebSocketServerAddr = 'wss://nosch.uber.space/web-rooms/';
+const socket = new WebSocket(webRoomsWebSocketServerAddr);
+
+function sendRequest(...message) {
+  socket.send(JSON.stringify(message));
+}
+
+// Handle incoming WebSocket messages
+socket.addEventListener('open', () => {
+  sendRequest('*enter-room*', 'cadavre-exquis');
+  sendRequest('*subscribe-client-count*');
+  setInterval(() => socket.send(''), 30000); // Keep connection alive
+});
 
 canvas.addEventListener("mousedown", (e) => {
   drawing = true;
