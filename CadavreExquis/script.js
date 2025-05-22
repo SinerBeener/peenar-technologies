@@ -15,7 +15,7 @@ function sendRequest(...message) {
 
 // Handle incoming WebSocket messages
 socket.addEventListener('open', () => {
-  sendRequest('*enter-room*', 'cadavre-exquis');
+  sendRequest('*enter-room*', 'touch-touch');
   sendRequest('*subscribe-client-count*');
   setInterval(() => socket.send(''), 30000); // Keep connection alive
 });
