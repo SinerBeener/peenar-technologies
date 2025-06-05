@@ -99,3 +99,32 @@ socket.addEventListener('message', (event) => {
         clientCount = incoming[1];
         clientDisplay.innerHTML = `#${clientId}/${clientCount}`;
         break;
+        
+         case '*client-enter*':
+        const enterId = incoming[1];
+        clientIds.add(enterId);
+        break;
+
+      case '*client-exit*':
+        const exitId = incoming[1];
+        clientIds.delete(exitId);
+        break;
+
+      case '*error*': {
+        const message = incoming[1];
+        console.warn('server error:', ...message);
+        break;
+      }
+
+      default:
+        console.log(`unknown incoming messsage: [${incoming}]`);
+        break;
+    }
+  }
+});
+
+// helper function to send requests over websocket to web-room server
+function sendRequest(...message) {
+  const str = JSON.stringify(message);
+  socket.send(str);
+}
