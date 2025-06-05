@@ -10,6 +10,25 @@ const webRoomsWebSocketServerAddr = 'https://nosch.uber.space/web-rooms/';
 let clientId = null; // client ID sent by web-rooms server when calling 'enter-room'
 let clientCount = 0; // number of clients connected to the same room
 
+function onPointer() {
+  if (audioContext === null) {
+    // start web audio
+    audioContext = new AudioContext();
+
+    // start
+    enterRoom();
+  } else if (clientId !== null && isYourTurn) {
+    // pass on to random client
+    passOn();
+  }
+}
+
+function enterRoom() {
+  sendRequest('*enter-room*', 'cadavre-exquis');
+  sendRequest('*subscribe-client-count*');
+  sendRequest('*subscribe-client-enter-exit*');
+}
+
 //Malen
 canvas.addEventListener("pointerdown", (e) => {
   drawing = true;
