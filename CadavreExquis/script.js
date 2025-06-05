@@ -7,6 +7,9 @@ let currentPath = [];
 // address of the WebSocket server
 const webRoomsWebSocketServerAddr = 'https://nosch.uber.space/web-rooms/';
 
+let clientId = null; // client ID sent by web-rooms server when calling 'enter-room'
+let clientCount = 0; // number of clients connected to the same room
+
 //Malen
 canvas.addEventListener("pointerdown", (e) => {
   drawing = true;
@@ -58,3 +61,41 @@ function redraw() {
     ctx.stroke();
   }
 }
+
+/****************************************************************
+ * websocket communication
+ */
+const socket = new WebSocket(webRoomsWebSocketServerAddr);
+
+// listen to opening websocket connections
+socket.addEventListener('open', (event) => {
+  // ping the server regularly with an empty message to prevent the socket from closing
+  setInterval(() => socket.send(''), 30000);
+});
+
+socket.addEventListener("close", (event) => {
+  clientId = null;
+  document.body.classList.add('disconnected');
+});
+
+// listen to messages from server
+socket.addEventListener('message', (event) => {
+  const data = event.data;
+
+  if (data.length > 0) {
+    const incoming = JSON.parse(data);
+    const selector = incoming[0];
+
+    // dispatch incomming messages
+    switch (selector) {
+      // responds to '*enter-room*'
+      case '*client-id*':
+        clientId = incoming[1];
+        clientDisplay.innerHTML = `#${clientId}/${clientCount}`;
+        break;
+
+      // responds to '*subscribe-client-count*'
+      case '*client-count*':
+        clientCount = incoming[1];
+        clientDisplay.innerHTML = `#${clientId}/${clientCount}`;
+        break;
