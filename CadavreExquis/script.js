@@ -12,13 +12,13 @@ let clientId = null; // client ID sent by web-rooms server when calling 'enter-r
 let clientCount = 0; // number of clients connected to the same room
 
 //Malen
-canvas.addEventListener("ontouchstart", (e) => {
+canvas.addEventListener("touchstart", (e) => {
   drawing = true;
   currentPath = [];
   ctx.beginPath();
 });
 
-canvas.addEventListener("ontouchmove", (e) => {
+canvas.addEventListener("touchmove", (e) => {
   if (!drawing) return;
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -28,7 +28,7 @@ canvas.addEventListener("ontouchmove", (e) => {
   currentPath.push({ x, y });
 });
 
-canvas.addEventListener("ontouchend", () => {
+canvas.addEventListener("touchend", () => {
   drawing = false;
   paths.push(currentPath);
 });
