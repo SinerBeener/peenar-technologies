@@ -1,5 +1,6 @@
 const canvas = document.getElementById("drawingCanvas");
 const ctx = canvas.getContext("2d");
+const indexElem = document.getElementById('client-index');
 let drawing = false;
 let paths = [];
 let currentPath = [];
