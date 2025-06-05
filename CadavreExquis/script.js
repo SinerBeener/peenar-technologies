@@ -10,33 +10,14 @@ const webRoomsWebSocketServerAddr = 'https://nosch.uber.space/web-rooms/';
 let clientId = null; // client ID sent by web-rooms server when calling 'enter-room'
 let clientCount = 0; // number of clients connected to the same room
 
-function onPointer() {
-  if (audioContext === null) {
-    // start web audio
-    audioContext = new AudioContext();
-
-    // start
-    enterRoom();
-  } else if (clientId !== null && isYourTurn) {
-    // pass on to random client
-    passOn();
-  }
-}
-
-function enterRoom() {
-  sendRequest('*enter-room*', 'cadavre-exquis');
-  sendRequest('*subscribe-client-count*');
-  sendRequest('*subscribe-client-enter-exit*');
-}
-
 //Malen
-canvas.addEventListener("pointerdown", (e) => {
+canvas.addEventListener("ontouchstart", (e) => {
   drawing = true;
   currentPath = [];
   ctx.beginPath();
 });
 
-canvas.addEventListener("pointermove", (e) => {
+canvas.addEventListener("ontouchmove", (e) => {
   if (!drawing) return;
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -46,7 +27,7 @@ canvas.addEventListener("pointermove", (e) => {
   currentPath.push({ x, y });
 });
 
-canvas.addEventListener("pointerup", () => {
+canvas.addEventListener("ontouchend", () => {
   drawing = false;
   paths.push(currentPath);
 });
@@ -88,6 +69,9 @@ const socket = new WebSocket(webRoomsWebSocketServerAddr);
 
 // listen to opening websocket connections
 socket.addEventListener('open', (event) => {
+  sendRequest('*enter-room*', 'cadavre-expuis');
+  sendRequest('*subscribe-client-count*');
+
   // ping the server regularly with an empty message to prevent the socket from closing
   setInterval(() => socket.send(''), 30000);
 });
@@ -95,6 +79,7 @@ socket.addEventListener('open', (event) => {
 socket.addEventListener("close", (event) => {
   clientId = null;
   document.body.classList.add('disconnected');
+  sendRequest('*broadcast-message*', ['end', clientId]);x
 });
 
 // listen to messages from server
@@ -107,27 +92,38 @@ socket.addEventListener('message', (event) => {
 
     // dispatch incomming messages
     switch (selector) {
-      // responds to '*enter-room*'
       case '*client-id*':
-        clientId = incoming[1];
-        clientDisplay.innerHTML = `#${clientId}/${clientCount}`;
+        clientId = incoming[1] + 1;
+        indexElem.innerHTML = `#${clientId}/${clientCount}`;
+        start();
         break;
 
-      // responds to '*subscribe-client-count*'
       case '*client-count*':
         clientCount = incoming[1];
-        clientDisplay.innerHTML = `#${clientId}/${clientCount}`;
-        break;
-        
-         case '*client-enter*':
-        const enterId = incoming[1];
-        clientIds.add(enterId);
+        indexElem.innerHTML = `#${clientId}/${clientCount}`;
         break;
 
-      case '*client-exit*':
-        const exitId = incoming[1];
-        clientIds.delete(exitId);
+      case 'start': {
+        const id = incoming[1];
+        const x = incoming[2];
+        const y = incoming[3];
+        createTouch(id, x, y);
         break;
+      }
+
+      case 'move': {
+        const id = incoming[1];
+        const x = incoming[2];
+        const y = incoming[3];
+        moveTouch(id, x, y);
+        break;
+      }
+
+      case 'end': {
+        const id = incoming[1];
+        deleteTouch(id);
+        break;
+      }
 
       case '*error*': {
         const message = incoming[1];
@@ -136,13 +132,16 @@ socket.addEventListener('message', (event) => {
       }
 
       default:
-        console.log(`unknown incoming messsage: [${incoming}]`);
         break;
     }
   }
 });
 
-// helper function to send requests over websocket to web-room server
+function setErrorMessage(text) {
+  messageElem.innerText = text;
+  messageElem.classList.add('error');
+}
+
 function sendRequest(...message) {
   const str = JSON.stringify(message);
   socket.send(str);
