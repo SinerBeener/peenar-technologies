@@ -4,6 +4,10 @@ let drawing = false;
 let paths = [];
 let currentPath = [];
 
+// address of the WebSocket server
+const webRoomsWebSocketServerAddr = 'https://nosch.uber.space/web-rooms/';
+
+//Malen
 canvas.addEventListener("pointerdown", (e) => {
   drawing = true;
   currentPath = [];
