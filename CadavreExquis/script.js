@@ -4,13 +4,13 @@ let drawing = false;
 let paths = [];
 let currentPath = [];
 
-canvas.addEventListener("mousedown", (e) => {
+canvas.addEventListener("pointerdown", (e) => {
   drawing = true;
   currentPath = [];
   ctx.beginPath();
 });
 
-canvas.addEventListener("mousemove", (e) => {
+canvas.addEventListener("pointermove", (e) => {
   if (!drawing) return;
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -20,7 +20,7 @@ canvas.addEventListener("mousemove", (e) => {
   currentPath.push({ x, y });
 });
 
-canvas.addEventListener("mouseup", () => {
+canvas.addEventListener("pointerup", () => {
   drawing = false;
   paths.push(currentPath);
 });
