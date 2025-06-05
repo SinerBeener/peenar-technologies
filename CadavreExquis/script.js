@@ -96,7 +96,6 @@ socket.addEventListener('message', (event) => {
       case '*client-id*':
         clientId = incoming[1] + 1;
         indexElem.innerHTML = `#${clientId}/${clientCount}`;
-        start();
         break;
 
       case '*client-count*':
