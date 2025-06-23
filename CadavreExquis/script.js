@@ -1,148 +1,75 @@
-const canvas = document.getElementById("drawingCanvas");
-const ctx = canvas.getContext("2d");
-const indexElem = document.getElementById('client-index');
-let drawing = false;
-let paths = [];
-let currentPath = [];
+let socket;
+let clientId = null;
+let clientCount = 0;
+let clientInfoElem;
 
-// address of the WebSocket server
-const webRoomsWebSocketServerAddr = 'https://nosch.uber.space/web-rooms/';
+let prevX = null, prevY = null;
 
-let clientId = null; // client ID sent by web-rooms server when calling 'enter-room'
-let clientCount = 0; // number of clients connected to the same room
+function setup() {
+  createCanvas(800, 600);
+  background(255);
+  strokeWeight(2);
+  clientInfoElem = document.getElementById('clientInfo');
 
-//Malen
-canvas.addEventListener("touchstart", (e) => {
-  drawing = true;
-  currentPath = [];
-  ctx.beginPath();
-});
+  socket = new WebSocket("wss://nosch.uber.space/web-rooms/");
 
-canvas.addEventListener("touchmove", (e) => {
-  if (!drawing) return;
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  ctx.lineTo(x, y);
-  ctx.stroke();
-  currentPath.push({ x, y });
-});
+  socket.addEventListener("open", () => {
+    sendMsg("*enter-room*", "p5-shared-draw-room");
+    sendMsg("*subscribe-client-count*");
+    console.log("WS connected");
+  });
 
-canvas.addEventListener("touchend", () => {
-  drawing = false;
-  paths.push(currentPath);
-});
-
-document.getElementById("undo").addEventListener("click", () => {
-  if (paths.length > 0) {
-    paths.pop();
-    redraw();
-  }
-});
-
-document.getElementById("submit").addEventListener("click", () => {
-  // Temporär: exportiere Zeichnung als Bild
-  const dataURL = canvas.toDataURL();
-  console.log("SENDEN:", dataURL);
-  // ➜ Hier würdest du via WebSocket die Daten an den Server schicken
-});
-
-function redraw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (let path of paths) {
-    ctx.beginPath();
-    for (let i = 0; i < path.length; i++) {
-      const point = path[i];
-      if (i === 0) {
-        ctx.moveTo(point.x, point.y);
-      } else {
-        ctx.lineTo(point.x, point.y);
-      }
+  socket.addEventListener("message", (ev) => {
+    let msg;
+    try {
+      msg = JSON.parse(ev.data);
+    } catch {
+      return;
     }
-    ctx.stroke();
+    const type = msg[0];
+
+    if (type === "*client-id*") {
+      clientId = msg[1];
+      updateInfo();
+    }
+
+    if (type === "*client-count*") {
+      clientCount = msg[1];
+      updateInfo();
+    }
+
+    if (type === "draw-line") {
+      const [sender, from, to] = [msg[1], msg[2], msg[3]];
+      if (sender === clientId) return;
+      stroke('red');
+      line(from[0], from[1], to[0], to[1]);
+    }
+  });
+}
+
+function updateInfo() {
+  if (clientId !== null && clientCount > 0) {
+    clientInfoElem.textContent = `Du bist Client #${clientId + 1} von ${clientCount}`;
   }
 }
 
-/****************************************************************
- * websocket communication
- */
-const socket = new WebSocket(webRoomsWebSocketServerAddr);
+function mouseDragged() {
+  const x = mouseX, y = mouseY;
+  if (prevX !== null && prevY !== null) {
+    stroke('black');
+    line(prevX, prevY, x, y);
 
-// listen to opening websocket connections
-socket.addEventListener('open', (event) => {
-  sendRequest('*enter-room*', 'cadavre-expuis');
-  sendRequest('*subscribe-client-count*');
-
-  // ping the server regularly with an empty message to prevent the socket from closing
-  setInterval(() => socket.send(''), 30000);
-});
-
-socket.addEventListener("close", (event) => {
-  clientId = null;
-  document.body.classList.add('disconnected');
-  sendRequest('*broadcast-message*', ['end', clientId]);x
-});
-
-// listen to messages from server
-socket.addEventListener('message', (event) => {
-  const data = event.data;
-
-  if (data.length > 0) {
-    const incoming = JSON.parse(data);
-    const selector = incoming[0];
-
-    // dispatch incomming messages
-    switch (selector) {
-      case '*client-id*':
-        clientId = incoming[1] + 1;
-        indexElem.innerHTML = `#${clientId}/${clientCount}`;
-        break;
-
-      case '*client-count*':
-        clientCount = incoming[1];
-        indexElem.innerHTML = `#${clientId}/${clientCount}`;
-        break;
-
-      case 'start': {
-        const id = incoming[1];
-        const x = incoming[2];
-        const y = incoming[3];
-        createTouch(id, x, y);
-        break;
-      }
-
-      case 'move': {
-        const id = incoming[1];
-        const x = incoming[2];
-        const y = incoming[3];
-        moveTouch(id, x, y);
-        break;
-      }
-
-      case 'end': {
-        const id = incoming[1];
-        deleteTouch(id);
-        break;
-      }
-
-      case '*error*': {
-        const message = incoming[1];
-        console.warn('server error:', ...message);
-        break;
-      }
-
-      default:
-        break;
-    }
+    sendMsg("draw-line", clientId, [prevX, prevY], [x, y]);
   }
-});
-
-function setErrorMessage(text) {
-  messageElem.innerText = text;
-  messageElem.classList.add('error');
+  prevX = x; prevY = y;
 }
 
-function sendRequest(...message) {
-  const str = JSON.stringify(message);
-  socket.send(str);
+function mouseReleased() {
+  prevX = prevY = null;
+}
+
+function sendMsg(...parts) {
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(parts));
+  }
 }
